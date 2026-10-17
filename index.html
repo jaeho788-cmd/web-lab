@@ -1,92 +1,537 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 첫 웹 페이지</title>
-    <style>
-        /* 깔끔한 화면을 위한 간단한 CSS 스타일 */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f7f6;
-            color: #333;
-        }
-        header {
-            background-color: #2c3e50;
-            color: white;
-            text-align: center;
-            padding: 2rem 1rem;
-        }
-        main {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        .card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
-        }
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: #2c3e50;
-            color: white;
-            font-size: 0.9rem;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mono Click</title>
+<style>
+  :root {
+    --bg: #0c0c0c;
+    --fg: #f2f2f2;
+    --mid: #8c8c8c;
+    --dim: #1f1f1f;
+    --line: #333333;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Inter", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---------- 흔들리는 무대 (화면 전체) ---------- */
+  .stage {
+    position: fixed;
+    inset: -40px;               /* 흔들릴 때 가장자리가 비지 않도록 여유 */
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 44px;
+    background:
+      radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%),
+      linear-gradient(var(--dim) 1px, transparent 1px) 0 0 / 48px 48px,
+      linear-gradient(90deg, var(--dim) 1px, transparent 1px) 0 0 / 48px 48px,
+      var(--bg);
+    --s: 1;
+  }
+
+  .stage.shake { animation: shake 0.34s cubic-bezier(.36,.07,.19,.97) both; }
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(calc(var(--s) * -1px), calc(var(--s) * 1px), 0); }
+    20%, 80% { transform: translate3d(calc(var(--s) * 3px), calc(var(--s) * -2px), 0) rotate(calc(var(--s) * 0.2deg)); }
+    30%, 50%, 70% { transform: translate3d(calc(var(--s) * -6px), calc(var(--s) * 2px), 0) rotate(calc(var(--s) * -0.4deg)); }
+    40%, 60% { transform: translate3d(calc(var(--s) * 6px), calc(var(--s) * -3px), 0) rotate(calc(var(--s) * 0.4deg)); }
+  }
+
+  /* ---------- 카운터 ---------- */
+  .counter {
+    text-align: center;
+    line-height: 1;
+  }
+  .counter .label {
+    font-size: 12px;
+    letter-spacing: 0.5em;
+    color: var(--mid);
+    margin-bottom: 14px;
+    padding-left: 0.5em;
+  }
+  .counter .num {
+    font-size: clamp(72px, 18vw, 168px);
+    font-weight: 200;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    display: inline-block;
+  }
+  .counter .num.bump { animation: bump 0.22s ease-out; }
+  @keyframes bump {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---------- 클릭 버튼 + 진행 링 ---------- */
+  .btn-wrap {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: grid;
+    place-items: center;
+  }
+  .ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .ring circle { fill: none; stroke-width: 2; }
+  .ring .track { stroke: var(--line); }
+  .ring .bar {
+    stroke: var(--fg);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.25s ease;
+  }
+
+  .click-btn {
+    position: relative;
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    border: 1px solid var(--fg);
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.4em;
+    padding-left: 0.4em;
+    cursor: pointer;
+    overflow: hidden;
+    transition: background 0.2s, color 0.2s, transform 0.08s;
+  }
+  .click-btn:hover { background: var(--fg); color: var(--bg); }
+  .click-btn:active { transform: scale(0.93); }
+  .click-btn:focus-visible { outline: 1px dashed var(--mid); outline-offset: 8px; }
+
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--mid);
+    transform: scale(0);
+    opacity: 0.5;
+    pointer-events: none;
+    animation: ripple 0.55s ease-out forwards;
+    mix-blend-mode: difference;
+  }
+  @keyframes ripple {
+    to { transform: scale(1); opacity: 0; }
+  }
+
+  .next {
+    font-size: 13px;
+    color: var(--mid);
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- 하단 ---------- */
+  .footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    font-size: 12px;
+    color: var(--mid);
+    z-index: 10;
+  }
+  .reset {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--mid);
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .reset:hover { border-color: var(--fg); color: var(--fg); }
+  kbd {
+    font-family: inherit;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+  }
+
+  /* ---------- 폭죽 / 연출 레이어 ---------- */
+  canvas#fx {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .flash {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .flash.on { animation: flash 0.5s ease-out; }
+  @keyframes flash {
+    0% { opacity: 0.22; }
+    100% { opacity: 0; }
+  }
+
+  .toast {
+    position: fixed;
+    top: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 7;
+    opacity: 0;
+  }
+  .toast .t-small {
+    font-size: 11px;
+    letter-spacing: 0.6em;
+    color: var(--mid);
+    padding-left: 0.6em;
+  }
+  .toast .t-big {
+    font-size: 40px;
+    font-weight: 200;
+    letter-spacing: 0.1em;
+    margin-top: 6px;
+  }
+  .toast.on { animation: toast 1.8s ease-out; }
+  @keyframes toast {
+    0%   { opacity: 0; transform: translate(-50%, 12px); letter-spacing: 0.1em; }
+    15%  { opacity: 1; transform: translate(-50%, 0); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -10px); }
+  }
+
+  @media (max-width: 480px) {
+    .btn-wrap { width: 190px; height: 190px; }
+    .click-btn { width: 146px; height: 146px; }
+    .footer .hint { display: none; }
+  }
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>안녕하세요! 방문을 환영합니다 👋</h1>
-        <p>HTML, CSS, JavaScript로 만든 기본 템플릿입니다.</p>
-    </header>
+  <div class="stage" id="stage">
+    <div class="counter">
+      <div class="label">CLICKS</div>
+      <div class="num" id="count">0</div>
+    </div>
 
-    <main>
-        <div class="card">
-            <h2>소개</h2>
-            <p>이 웹 페이지는 브라우저에서 바로 실행 가능한 표준 소스코드입니다. 디자인을 바꾸고 싶다면 상단의 <code>&lt;style&gt;</code> 태그 안의 내용을 수정해보세요.</p>
-        </div>
+    <div class="btn-wrap">
+      <svg class="ring" viewBox="0 0 220 220">
+        <circle class="track" cx="110" cy="110" r="104"></circle>
+        <circle class="bar" id="ringBar" cx="110" cy="110" r="104"></circle>
+      </svg>
+      <button class="click-btn" id="clickBtn" aria-label="클릭">CLICK</button>
+    </div>
 
-        <div class="card">
-            <h2>동적 기능 테스트</h2>
-            <p>아래 버튼을 누르면 자바스크립트(JavaScript)가 동작합니다.</p>
-            <button onclick="greetUser()">인사말 보기</button>
-        </div>
-    </main>
+    <div class="next" id="next">다음 폭죽까지 10번</div>
+  </div>
 
-    <footer>
-        <p>&copy; 2026 나의 웹사이트. All rights reserved.</p>
-    </footer>
+  <canvas id="fx"></canvas>
+  <div class="flash" id="flash"></div>
+  <div class="toast" id="toast">
+    <div class="t-small">MILESTONE</div>
+    <div class="t-big" id="toastNum">10</div>
+  </div>
 
-    <script>
-        // 간단한 알림창을 띄우는 자바스크립트 함수
-        function greetUser() {
-            alert('반갑습니다! 멋진 웹 페이지를 만들어보세요!');
-        }
-    </script>
+  <div class="footer">
+    <span class="hint"><kbd>Space</kbd> / <kbd>Enter</kbd> 로도 클릭</span>
+    <button class="reset" id="resetBtn">RESET</button>
+  </div>
 
+<script>
+(() => {
+  const STORAGE_KEY = "mono-click-count";
+
+  const stage    = document.getElementById("stage");
+  const countEl  = document.getElementById("count");
+  const btn      = document.getElementById("clickBtn");
+  const ringBar  = document.getElementById("ringBar");
+  const nextEl   = document.getElementById("next");
+  const flashEl  = document.getElementById("flash");
+  const toastEl  = document.getElementById("toast");
+  const toastNum = document.getElementById("toastNum");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const CIRC = 2 * Math.PI * 104;
+  ringBar.style.strokeDasharray = CIRC;
+
+  let count = 0;
+  try { count = parseInt(localStorage.getItem(STORAGE_KEY), 10) || 0; } catch (e) {}
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, String(count)); } catch (e) {}
+  }
+
+  function render() {
+    countEl.textContent = count.toLocaleString();
+    const p = count % 10;
+    ringBar.style.strokeDashoffset = CIRC * (1 - p / 10);
+    nextEl.textContent = `다음 폭죽까지 ${10 - p}번`;
+  }
+
+  // 애니메이션 재시작 헬퍼
+  function replay(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function shake(intensity) {
+    stage.style.setProperty("--s", intensity);
+    replay(stage, "shake");
+  }
+
+  function ripple(e) {
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 2;
+    const x = (e && e.clientX) ? e.clientX - rect.left : rect.width / 2;
+    const y = (e && e.clientY) ? e.clientY - rect.top  : rect.height / 2;
+    const r = document.createElement("span");
+    r.className = "ripple";
+    r.style.width = r.style.height = size + "px";
+    r.style.left = (x - size / 2) + "px";
+    r.style.top  = (y - size / 2) + "px";
+    btn.appendChild(r);
+    r.addEventListener("animationend", () => r.remove());
+  }
+
+  function doClick(e) {
+    count++;
+    save();
+    render();
+    replay(countEl, "bump");
+    ripple(e);
+
+    if (count % 10 === 0) {
+      celebrate();
+      shake(2.6);
+    } else {
+      shake(1);
+    }
+  }
+
+  function celebrate() {
+    replay(flashEl, "on");
+    toastNum.textContent = count.toLocaleString();
+    replay(toastEl, "on");
+
+    const bursts = Math.min(3 + Math.floor(count / 10), 9);
+    for (let i = 0; i < bursts; i++) {
+      setTimeout(launch, i * 170 + Math.random() * 80);
+    }
+  }
+
+  // 마우스/터치 클릭 (키보드로 발생한 click은 아래 keydown에서 처리)
+  btn.addEventListener("click", (e) => {
+    if (e.detail === 0) return;
+    doClick(e);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target === resetBtn) return;
+    if (e.code === "Space" || e.code === "Enter" || e.code === "NumpadEnter") {
+      e.preventDefault();
+      if (e.repeat) return;
+      doClick(null);
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    count = 0;
+    save();
+    render();
+    replay(countEl, "bump");
+    shake(0.6);
+  });
+
+  render();
+
+  /* =====================================================
+     폭죽 (Canvas 파티클)
+     ===================================================== */
+  const cv  = document.getElementById("fx");
+  const ctx = cv.getContext("2d");
+  let W = 0, H = 0, DPR = 1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    cv.width  = W * DPR;
+    cv.height = H * DPR;
+    cv.style.width  = W + "px";
+    cv.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  const GRAVITY = 0.12;
+  const rockets = [];
+  const particles = [];
+  let running = false;
+
+  const SHADES = [255, 235, 210, 180, 150];
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  function launch() {
+    const x = W * (0.12 + Math.random() * 0.76);
+    const targetY = H * (0.1 + Math.random() * 0.35);
+    const vy = -Math.sqrt(2 * GRAVITY * (H - targetY));
+    rockets.push({
+      x, y: H + 5,
+      px: x, py: H + 5,
+      vx: (Math.random() - 0.5) * 1.6,
+      vy,
+      shade: pick(SHADES)
+    });
+    start();
+  }
+
+  function explode(r) {
+    const type = Math.random();
+    const n = 90 + Math.floor(Math.random() * 50);
+    const maxSpeed = 3.5 + Math.random() * 3;
+
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 + Math.random() * 0.1;
+      let speed;
+      if (type < 0.35) {
+        speed = maxSpeed * (0.92 + Math.random() * 0.08);          // 링
+      } else {
+        speed = maxSpeed * Math.pow(Math.random(), 0.5);            // 구
+      }
+      particles.push({
+        x: r.x, y: r.y,
+        px: r.x, py: r.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.008 + Math.random() * 0.012,
+        width: 1 + Math.random() * 1.6,
+        shade: Math.random() < 0.25 ? pick(SHADES) : r.shade,
+        glitter: type > 0.7
+      });
+    }
+
+    // 중심부 섬광
+    particles.push({
+      x: r.x, y: r.y, px: r.x, py: r.y,
+      vx: 0, vy: 0, life: 1, decay: 0.08,
+      width: 0, shade: 255, core: true
+    });
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    // 잔상 남기며 지우기
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+
+    // 로켓
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.px = r.x; r.py = r.y;
+      r.vy += GRAVITY;
+      r.x += r.vx;
+      r.y += r.vy;
+
+      ctx.strokeStyle = `rgba(${r.shade},${r.shade},${r.shade},0.9)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(r.px, r.py);
+      ctx.lineTo(r.x, r.y);
+      ctx.stroke();
+
+      if (r.vy >= -0.6) {
+        explode(r);
+        rockets.splice(i, 1);
+      }
+    }
+
+    // 파티클
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+
+      if (p.core) {
+        const rad = 60 * (1 - p.life) + 10;
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+        g.addColorStop(0, `rgba(255,255,255,${0.6 * p.life})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+        ctx.fill();
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+        continue;
+      }
+
+      p.px = p.x; p.py = p.y;
+      p.vx *= 0.982;
+      p.vy *= 0.982;
+      p.vy += 0.045;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+      let alpha = Math.min(1, p.life * 1.4);
+      if (p.glitter && p.life < 0.6) alpha *= Math.random() < 0.5 ? 0.15 : 1;
+
+      ctx.strokeStyle = `rgba(${p.shade},${p.shade},${p.shade},${alpha})`;
+      ctx.lineWidth = p.width;
+      ctx.beginPath();
+      ctx.moveTo(p.px, p.py);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    if (rockets.length || particles.length) {
+      requestAnimationFrame(tick);
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, W, H);
+      running = false;
+    }
+  }
+})();
+</script>
 </body>
 </html>
-
